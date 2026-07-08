@@ -45,9 +45,60 @@ class BgService extends System.ServiceDelegate {
         }
     }
 
-    // HR POST done (success or not) → get BG.
+    // HR POST done (success or not) → send steps.
     function onHrSent(code as Number, data as Null or Dictionary or String or PersistedContent.Iterator) as Void {
+        sendStepsThenFetchBg();
+    }
+
+    // Steps: getInfo().steps is a CUMULATIVE daily counter (resets ~0 at device-midnight). We keep a
+    // ring buffer of recent (tSec, cumulative) in Storage and compute the six trailing-window deltas
+    // (reset-resilient: a negative delta = a midnight reset → use the current cumulative).
+    function sendStepsThenFetchBg() as Void {
+        var info = ActivityMonitor.getInfo();
+        var cum = (info != null && info.steps != null) ? info.steps : null;
+        if (cum == null) { fetchBg(); return; }
+        var nowSec = Time.now().value();
+
+        var buf = Application.Storage.getValue("stepBuf");
+        if (!(buf instanceof Array)) { buf = []; }
+        var cutoff = nowSec - 180 * 60;
+        var pruned = [];
+        for (var i = 0; i < buf.size(); i++) {
+            if (buf[i] instanceof Array && buf[i][0] >= cutoff) { pruned.add(buf[i]); }
+        }
+        buf = pruned;
+
+        var params = {
+            "device" => "venu3", "t" => nowSec,
+            "s5"  => deltaOver(buf, cum, nowSec, 5),
+            "s10" => deltaOver(buf, cum, nowSec, 10),
+            "s15" => deltaOver(buf, cum, nowSec, 15),
+            "s30" => deltaOver(buf, cum, nowSec, 30),
+            "s60" => deltaOver(buf, cum, nowSec, 60),
+            "s180"=> deltaOver(buf, cum, nowSec, 180)
+        };
+        buf.add([nowSec, cum]);
+        Application.Storage.setValue("stepBuf", buf);
+
+        Communications.makeWebRequest(base() + "/steps", params,
+            { :method => Communications.HTTP_REQUEST_METHOD_GET }, method(:onStepsSent));
+    }
+
+    function onStepsSent(code as Number, data as Null or Dictionary or String or PersistedContent.Iterator) as Void {
         fetchBg();
+    }
+
+    // Steps over the last `minutes`: cumulative_now − cumulative_at(≈minutes ago). Uses the EARLIEST
+    // buffered sample within the window as the base. Reset-resilient. 0 if no history in window.
+    function deltaOver(buf as Array, cum as Number, nowSec as Number, minutes as Number) as Number {
+        var target = nowSec - minutes * 60;
+        var base = null;
+        for (var i = 0; i < buf.size(); i++) {
+            if (buf[i][0] >= target && buf[i][0] <= nowSec) { base = buf[i][1]; break; }  // earliest in window
+        }
+        if (base == null) { return 0; }
+        var d = cum - base;
+        return (d < 0) ? cum : d;   // negative = midnight reset
     }
 
     // "<tSec>:<bpm>,<tSec>:<bpm>,..." for valid 1-min samples in the last 5 min.
