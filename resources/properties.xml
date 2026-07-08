@@ -1,0 +1,6 @@
+<properties>
+    <!-- The AAPS phone HTTP server. 127.0.0.1 is the phone itself (the makeWebRequest is bridged
+         through Garmin Connect Mobile). Port = AAPS "communication_http_port" (default 28891). -->
+    <property id="aapsHost" type="string">127.0.0.1</property>
+    <property id="aapsPort" type="number">28891</property>
+</properties>

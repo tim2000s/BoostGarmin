@@ -1,0 +1,5 @@
+<strings>
+    <string id="AppName">Boost</string>
+    <string id="HostTitle">AAPS host (usually 127.0.0.1)</string>
+    <string id="PortTitle">AAPS HTTP port (default 28891)</string>
+</strings>

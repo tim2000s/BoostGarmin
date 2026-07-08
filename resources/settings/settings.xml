@@ -1,0 +1,8 @@
+<settings>
+    <setting propertyKey="@Properties.aapsHost" title="@Strings.HostTitle">
+        <settingConfig type="alphaNumeric"/>
+    </setting>
+    <setting propertyKey="@Properties.aapsPort" title="@Strings.PortTitle">
+        <settingConfig type="numeric" min="1" max="65535"/>
+    </setting>
+</settings>

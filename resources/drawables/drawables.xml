@@ -1,0 +1,5 @@
+<drawables>
+    <!-- Launcher icon. NEEDS a real PNG at resources/drawables/launcher_icon.png (Venu 3 ~40x40).
+         Build will fail until it exists — a placeholder square is fine for Phase 0. -->
+    <bitmap id="LauncherIcon" filename="launcher_icon.png"/>
+</drawables>

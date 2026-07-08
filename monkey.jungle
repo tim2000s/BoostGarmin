@@ -1,0 +1,2 @@
+# Boost Garmin — build config. Single project, source shared across (eventually) all devices.
+project.manifest = manifest.xml
