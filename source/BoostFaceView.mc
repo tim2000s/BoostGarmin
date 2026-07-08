@@ -1,3 +1,4 @@
+import Toybox.Lang;
 using Toybox.WatchUi;
 using Toybox.Graphics;
 using Toybox.System;

@@ -1,3 +1,4 @@
+import Toybox.Lang;
 using Toybox.Application;
 using Toybox.Graphics;
 using Toybox.System;

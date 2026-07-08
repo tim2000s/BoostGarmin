@@ -1,8 +1,10 @@
+import Toybox.Lang;
 using Toybox.System;
 using Toybox.Background;
 using Toybox.Communications;
 using Toybox.Application;
 using Toybox.Time;
+using Toybox.PersistedContent;
 
 // Background pull from the AAPS phone HTTP server.
 // Endpoint (AAPS Garmin plugin HttpServer): GET http://127.0.0.1:<port>/sgv.json?count=12&brief_mode=true
@@ -31,9 +33,17 @@ class BgService extends System.ServiceDelegate {
     }
 
     // NS SGV objects: { "sgv": <mgdl>, "direction": "<Flat|FortyFiveUp|...>", "date": <ms>, "delta": <n> }
-    function onReceive(code as Number, data) as Void {
-        if (code == 200 && data != null && data instanceof Toybox.Lang.Array && data.size() > 0) {
-            var latest = data[0];            // newest first
+    // /sgv.json returns a JSON ARRAY (newest first). The callback param must be a supertype of the
+    // makeWebRequest data union, so it lists Array + the required Dictionary/String/Iterator members.
+    function onReceive(
+        code as Number,
+        data as Null or Dictionary or String or PersistedContent.Iterator
+    ) as Void {
+        // /sgv.json actually returns a JSON Array (not in the SDK's declared union), so widen to
+        // Object, then runtime-check + narrow to Array.
+        var obj = data as Object?;
+        if (code == 200 && obj != null && obj instanceof Array && (obj as Array).size() > 0) {
+            var latest = (obj as Array)[0] as Dictionary;   // newest first
             var out = {
                 "bg"    => numOrNull(latest, "sgv"),
                 "dir"   => (latest.hasKey("direction") ? latest["direction"] : null),
@@ -49,7 +59,7 @@ class BgService extends System.ServiceDelegate {
         }
     }
 
-    function numOrNull(d, key) {
+    function numOrNull(d as Dictionary, key as String) {
         if (d != null && d.hasKey(key) && d[key] != null) { return d[key]; }
         return null;
     }

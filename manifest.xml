@@ -12,6 +12,7 @@
         <iq:products>
             <!-- Phase 0: Venu 3 only. Add venu3s / epix2 / fr965 etc. once it runs. -->
             <iq:product id="venu3"/>
+            <iq:product id="vivoactive5"/>
         </iq:products>
         <iq:permissions>
             <!-- makeWebRequest to the AAPS phone HTTP server (bridged via Garmin Connect Mobile). -->
