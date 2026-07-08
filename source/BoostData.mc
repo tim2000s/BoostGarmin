@@ -1,6 +1,7 @@
 using Toybox.Application;
 using Toybox.Graphics;
 using Toybox.System;
+using Toybox.Time;
 
 // Shared data + visual constants. Storage write happens in the foreground (onBackgroundData);
 // host()/port() are also read in the background, so this module is (:background)-safe.
