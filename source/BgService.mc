@@ -153,6 +153,7 @@ class BgService extends System.ServiceDelegate {
                 "loop"   => (latest.hasKey("loop") ? latest["loop"] : null),
                 "loopMs" => numOrNull(latest, "loopMs"),
                 "isf"    => numOrNull(latest, "isf"),
+                "units"  => (latest.hasKey("units_hint") ? latest["units_hint"] : null),
                 "ok"     => true,
                 "code"   => code
             };

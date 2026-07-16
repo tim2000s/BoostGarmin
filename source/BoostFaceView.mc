@@ -51,7 +51,7 @@ class BoostFaceView extends WatchUi.WatchFace {
         if (_lowPower) {
             dc.setColor(0x666666, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, cy - h * 0.20, Graphics.FONT_NUMBER_MEDIUM, timeStr, CTR);
-            drawBgValue(dc, cx, cy + h * 0.08, bg, stale ? 0x555555 : 0x888888, Graphics.FONT_NUMBER_MEDIUM);
+            drawBgValue(dc, cx, cy + h * 0.08, BoostData.bgText(), stale ? 0x555555 : 0x888888, Graphics.FONT_NUMBER_MEDIUM);
             return;
         }
 
@@ -62,23 +62,25 @@ class BoostFaceView extends WatchUi.WatchFace {
         // ── BG ring: WFF Arc -150°..+150° (60° gap at the bottom), r = 205/450, thickness 14. ──
         drawRing(dc, cx, cy, (w * 0.456).toNumber(), BoostData.bgFrac(bg), stale ? 0x5A5A5A : band);
 
-        // ── Top slot: date (grey-blue) ──  WFF slot4 @ y40, size24 #b0bec5
+        // NB: the WFF grid (450px) packs time+BG almost touching because its fonts fit their boxes
+        // exactly; Garmin's NUMBER_* fonts are taller, so the stack is spread wider than the raw WFF
+        // y's to avoid overlap while keeping the same order/proportions.
+
+        // ── Top slot: date (grey-blue) ──
         dc.setColor(0xB0BEC5, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.140).toNumber(), Graphics.FONT_SMALL, dateString(), VC);
+        dc.drawText(cx, (h * 0.115).toNumber(), Graphics.FONT_SMALL, dateString(), VC);
 
-        // ── Time ──  WFF @ y92, size48 white
+        // ── Time ──
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.271).toNumber(), Graphics.FONT_NUMBER_MEDIUM, timeStr, VC);
+        dc.drawText(cx, (h * 0.250).toNumber(), Graphics.FONT_NUMBER_MEDIUM, timeStr, VC);
 
-        // ── BG hero: TIR-band coloured (the WFF number takes the band colour) ──  WFF @ y150, size80
-        drawBgValue(dc, cx, (h * 0.424).toNumber(), bg, bgCol, Graphics.FONT_NUMBER_HOT);
+        // ── BG hero: TIR-band coloured ──
+        drawBgValue(dc, cx, (h * 0.455).toNumber(), BoostData.bgText(), bgCol, Graphics.FONT_NUMBER_HOT);
 
-        // ── delta + age + trend arrow (grey-blue) ──  WFF @ y234, size26 #b0bec5
-        var dy = (h * 0.556).toNumber();
+        // ── delta + age + trend arrow (grey-blue) ──
+        var dy = (h * 0.610).toNumber();
         drawTrendArrows(dc, (cx - w * 0.17).toNumber(), dy, (h * 0.028).toNumber(), BoostData.dir(), 0xB0BEC5);
-        var d = BoostData.delta();
-        var sub = "";
-        if (d != null) { sub = (d >= 0 ? "+" : "") + d.format("%d"); }
+        var sub = BoostData.deltaText();
         if (age >= 0)  { sub += (sub.length() > 0 ? "     " : "") + age.toString() + "m"; }
         dc.setColor(0xB0BEC5, Graphics.COLOR_TRANSPARENT);
         dc.drawText((cx + w * 0.05).toNumber(), dy, Graphics.FONT_SMALL, sub, VC);
@@ -89,21 +91,20 @@ class BoostFaceView extends WatchUi.WatchFace {
         var iob = BoostData.iob();
         var isf = BoostData.isf();
         dc.setColor(0x90A4AE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(lx, (h * 0.660).toNumber(), Graphics.FONT_XTINY, "IOB", VC);
-        dc.drawText(rx, (h * 0.660).toNumber(), Graphics.FONT_XTINY, "ISF", VC);
+        dc.drawText(lx, (h * 0.700).toNumber(), Graphics.FONT_XTINY, "IOB", VC);
+        dc.drawText(rx, (h * 0.700).toNumber(), Graphics.FONT_XTINY, "ISF", VC);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(lx, (h * 0.740).toNumber(), Graphics.FONT_MEDIUM, (iob == null ? "--" : fmt1(iob) + "U"), VC);
-        dc.drawText(rx, (h * 0.740).toNumber(), Graphics.FONT_MEDIUM, (isf == null ? "--" : fmt1(isf)), VC);
+        dc.drawText(lx, (h * 0.775).toNumber(), Graphics.FONT_MEDIUM, (iob == null ? "--" : fmt1(iob) + "U"), VC);
+        dc.drawText(rx, (h * 0.775).toNumber(), Graphics.FONT_MEDIUM, (isf == null ? "--" : fmt1(isf)), VC);
 
         // ── Status / loop line (bottom, teal) ──  WFF slot3 @ y372, size24 #80cbc4
         var lp = BoostData.loop();
         dc.setColor(0x80CBC4, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.876).toNumber(), Graphics.FONT_SMALL, (lp == null) ? "--" : lp, VC);
+        dc.drawText(cx, (h * 0.900).toNumber(), Graphics.FONT_SMALL, (lp == null) ? "--" : lp, VC);
     }
 
-    // ── BG value ──
-    function drawBgValue(dc, cx, cy, bg, color, font) as Void {
-        var s = (bg == null) ? "--" : bg.format("%d");
+    // ── BG value (s is pre-formatted for the user's units) ──
+    function drawBgValue(dc, cx, cy, s, color, font) as Void {
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, cy, font, s, VC);
     }

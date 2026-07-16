@@ -21,7 +21,8 @@ module BoostData {
     const K_TBR   = "tbr";       // temp basal rate (%)
     const K_LOOP  = "loop";      // loop status string (CLOSED/OPEN/LGS/SUSPEND/…)
     const K_LOOPMS= "loopMs";    // epoch-ms of the last APS run (loop freshness)
-    const K_ISF   = "isf";       // DynISF / variable sensitivity (mg/dL/U)
+    const K_ISF   = "isf";       // DynISF / variable sensitivity (in the user's units)
+    const K_UNITS = "units";     // "mmol" or "mgdl" (AAPS units_hint)
 
     // ── Settings (from resources/settings/settings.xml) ──
     function host() as String {
@@ -48,6 +49,7 @@ module BoostData {
             Application.Storage.setValue(K_LOOP,  data["loop"]);
             Application.Storage.setValue(K_LOOPMS,data["loopMs"]);
             Application.Storage.setValue(K_ISF,   data["isf"]);
+            Application.Storage.setValue(K_UNITS, data["units"]);
             Application.Storage.setValue(K_UPDMS, System.getTimer());
         }
         // On failure we keep the last-good values and just let the age grow (honest staleness).
@@ -61,6 +63,29 @@ module BoostData {
     function tbr()   { return Application.Storage.getValue(K_TBR); }
     function loop()  { return Application.Storage.getValue(K_LOOP); }
     function isf()   { return Application.Storage.getValue(K_ISF); }
+
+    // True when the user runs mmol/L (from the AAPS units_hint).
+    function isMmol() as Boolean {
+        var u = Application.Storage.getValue(K_UNITS);
+        return (u != null && u.equals("mmol"));
+    }
+
+    // BG formatted for display: mmol/L → 1 decimal, mg/dL → integer; "--" if no data.
+    function bgText() as String {
+        var v = bg();
+        if (v == null) { return "--"; }
+        if (isMmol()) { return (v / 18.0).format("%.1f"); }
+        return v.format("%d");
+    }
+
+    // Signed 5-min delta formatted in the user's units ("" if unknown).
+    function deltaText() as String {
+        var v = delta();
+        if (v == null) { return ""; }
+        var sign = (v >= 0) ? "+" : "";
+        if (isMmol()) { return sign + (v / 18.0).format("%.1f"); }
+        return sign + v.format("%d");
+    }
 
     // Minutes since the last APS run (loop freshness), or -1 if unknown.
     function loopAgeMin() as Number {
