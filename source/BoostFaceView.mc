@@ -97,10 +97,17 @@ class BoostFaceView extends WatchUi.WatchFace {
         dc.drawText(lx, (h * 0.775).toNumber(), Graphics.FONT_SMALL, (iob == null ? "--" : fmt1(iob) + "U"), VC);
         dc.drawText(rx, (h * 0.775).toNumber(), Graphics.FONT_SMALL, (isf == null ? "--" : fmt1(isf)), VC);
 
-        // ── Status / loop line (bottom, teal) ──  WFF slot3 @ y372, size24 #80cbc4
-        var lp = BoostData.loop();
+        // ── Status line (bottom, teal): compound details like the Wear bgring bottom slot
+        //    (COB · IOB · TBR), not the bare loop mode. ──
+        var cobV = BoostData.cob();
+        var tbrV = BoostData.tbr();
+        var st = "";
+        if (cobV != null) { st += cobV.format("%d") + "g"; }
+        if (iob != null)  { st += (st.length() > 0 ? "  " : "") + fmt1(iob) + "U"; }
+        if (tbrV != null) { st += (st.length() > 0 ? "  " : "") + tbrV.format("%d") + "%"; }
+        if (st.equals("")) { st = "--"; }
         dc.setColor(0x80CBC4, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.900).toNumber(), Graphics.FONT_TINY, (lp == null) ? "--" : lp, VC);
+        dc.drawText(cx, (h * 0.900).toNumber(), Graphics.FONT_TINY, st, VC);
     }
 
     // ── BG value (s is pre-formatted for the user's units) ──
