@@ -75,6 +75,20 @@ class BoostFaceView extends WatchUi.WatchFace {
         dc.setColor(bgCol, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, (191 * R).toNumber(), vf(80, true, R, Graphics.FONT_NUMBER_HOT), BoostData.bgText(), VC);
 
+        // ── HR (left gap) + steps (right gap), flanking the BG number: on-device, icon above value,
+        //    value size ~ the IOB/ISF values. Vertically bracket the BG centre (icon y168, value y206). ──
+        var hlx  = (78 * R).toNumber();
+        var hrx  = (372 * R).toNumber();
+        var icY  = (168 * R).toNumber();
+        var vaY  = (206 * R).toNumber();
+        var icS  = (20 * R).toNumber();
+        drawHeart(dc, hlx, icY, icS, 0xFF5252);
+        drawFootprints(dc, hrx, icY, icS, 0x80CBC4);
+        var hr = currentHr();
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(hlx, vaY, vf(28, false, R, Graphics.FONT_MEDIUM), (hr == null ? "--" : hr.toString()), VC);
+        dc.drawText(hrx, vaY, vf(28, false, R, Graphics.FONT_MEDIUM), stepStr(), VC);
+
         // ── delta + age + trend arrow (@ y250, size 26, grey-blue) ──
         var dy = (250 * R).toNumber();
         drawTrendArrows(dc, (cx - w * 0.17).toNumber(), dy, (h * 0.026).toNumber(), BoostData.dir(), 0xB0BEC5);
@@ -200,7 +214,9 @@ class BoostFaceView extends WatchUi.WatchFace {
         dc.setPenWidth(1);
     }
 
-    // Simple filled heart (two lobes + a triangle) centred at (x,y).
+    // Simple filled heart (two lobes + a triangle) centred at (x,y). All polygon coordinates MUST
+    // be Numbers — CIQ fillPolygon throws on a Float point (this was a latent crash: drawHeart was
+    // unused until HR was added to the face).
     function drawHeart(dc, x, y, s, color) as Void {
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         var lobeR = (s * 0.55).toNumber();
@@ -208,11 +224,28 @@ class BoostFaceView extends WatchUi.WatchFace {
         var offY  = (s * 0.25).toNumber();
         dc.fillCircle(x - offX, y - offY, lobeR);
         dc.fillCircle(x + offX, y - offY, lobeR);
+        var topY = (y - offY * 0.2).toNumber();
         dc.fillPolygon([
-            [x - s, y - offY * 0.2],
-            [x + s, y - offY * 0.2],
-            [x,     y + s]
+            [(x - s).toNumber(), topY],
+            [(x + s).toNumber(), topY],
+            [x.toNumber(),       (y + s).toNumber()]
         ]);
+    }
+
+    // Footprints (steps) icon: two small offset "soles" (rounded rect) each with a toe circle.
+    function drawFootprints(dc, x, y, s, color) as Void {
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        // left print, slightly lower; right print, slightly higher — a walking pair
+        drawFootprint(dc, (x - s * 0.42).toNumber(), (y + s * 0.18).toNumber(), s);
+        drawFootprint(dc, (x + s * 0.42).toNumber(), (y - s * 0.18).toNumber(), s);
+    }
+
+    function drawFootprint(dc, px, py, s) as Void {
+        var soleW = (s * 0.42).toNumber();
+        var soleH = (s * 0.7).toNumber();
+        var toeR  = (s * 0.24).toNumber();
+        dc.fillRoundedRectangle(px - soleW / 2, py - soleH / 2, soleW, soleH, (soleW / 2).toNumber());
+        dc.fillCircle(px, (py - soleH / 2).toNumber(), toeR);   // toes above the sole
     }
 
     // Battery: rounded outline + fill (green >30, amber >15, red else) + terminal nub.
