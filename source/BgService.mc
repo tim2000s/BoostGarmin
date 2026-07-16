@@ -70,7 +70,13 @@ class BgService extends System.ServiceDelegate {
 
         var params = {
             "device" => "venu3", "t" => nowSec,
-            "s5"  => deltaOver(buf, cum, nowSec, 5),
+            // s5 = steps since the PREVIOUS wake (the per-5-min-slot increment the phone sums into
+            // the daily total). Garmin throttles background wakes to ≥5 min (often ~6), so a rigid
+            // 5-min trailing window misses the prior sample and reports 0 — which froze the phone's
+            // stepsToday reconstruction (it reads steps5min only). Use the most-recent sample within
+            // a 15-min grace as the base instead. s10..s180 are genuine trailing windows (wider than
+            // the wake gap) and stay as-is.
+            "s5"  => stepsSincePrev(buf, cum, nowSec, 15),
             "s10" => deltaOver(buf, cum, nowSec, 10),
             "s15" => deltaOver(buf, cum, nowSec, 15),
             "s30" => deltaOver(buf, cum, nowSec, 30),
@@ -86,6 +92,26 @@ class BgService extends System.ServiceDelegate {
 
     function onStepsSent(code as Number, data as Null or Dictionary or String or PersistedContent.Iterator) as Void {
         fetchBg();
+    }
+
+    // Steps since the previous background wake: cumulative_now − cumulative_at(the MOST-RECENT
+    // buffered sample within `graceMin`). This is the natural per-cycle increment the phone
+    // reconstructs the daily total from, and it's robust to the ≥5-min (often ~6-min) Garmin
+    // background wake throttle that a rigid 5-min window can't span. Reset-resilient. 0 if the
+    // watch has been asleep longer than the grace (avoids folding a long gap into one bucket).
+    function stepsSincePrev(buf as Array, cum as Number, nowSec as Number, graceMin as Number) as Number {
+        var cutoff = nowSec - graceMin * 60;
+        var base = null;
+        var baseT = null;
+        for (var i = 0; i < buf.size(); i++) {
+            var t = buf[i][0];
+            if (t >= cutoff && t <= nowSec) {
+                if (baseT == null || t > baseT) { baseT = t; base = buf[i][1]; }  // most-recent in grace
+            }
+        }
+        if (base == null) { return 0; }
+        var d = cum - base;
+        return (d < 0) ? cum : d;   // negative = midnight reset
     }
 
     // Steps over the last `minutes`: cumulative_now − cumulative_at(≈minutes ago). Uses the EARLIEST
