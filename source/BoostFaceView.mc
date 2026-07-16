@@ -75,7 +75,22 @@ class BoostFaceView extends WatchUi.WatchFace {
         if (d != null) {
             var ds = (d >= 0 ? "+" : "") + d.format("%d");
             dc.setColor(0xB0B0B0, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy + h * 0.135, Graphics.FONT_SMALL, ds, CTR);
+            dc.drawText(cx, cy + h * 0.115, Graphics.FONT_SMALL, ds, CTR);
+        }
+
+        // ── Dosing / loop row: IOB (left) · loop pill (centre) · COB (right) ──
+        var rowY = (cy + h * 0.185).toNumber();
+        var iob = BoostData.iob();
+        drawTile(dc, (cx - w * 0.22).toNumber(), rowY, "IOB", (iob == null ? "--" : fmt1(iob) + "U"));
+        var cob = BoostData.cob();
+        drawTile(dc, (cx + w * 0.22).toNumber(), rowY, "COB", (cob == null ? "--" : cob.format("%d") + "g"));
+        var lp = BoostData.loop();
+        if (lp != null) {
+            dc.setColor(BoostData.loopColor(), Graphics.COLOR_TRANSPARENT);
+            dc.fillCircle((cx - w * 0.085).toNumber(), (rowY + h * 0.035).toNumber(), 5);
+            dc.setColor(0xCFCFCF, Graphics.COLOR_TRANSPARENT);
+            dc.drawText((cx + w * 0.02).toNumber(), (rowY + h * 0.035).toNumber(),
+                        Graphics.FONT_XTINY, lp, VC);
         }
 
         // ── HR (left) ──
@@ -109,6 +124,19 @@ class BoostFaceView extends WatchUi.WatchFace {
         var s = (bg == null) ? "--" : bg.format("%d");
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, cy, font, s, VC);
+    }
+
+    // Small labelled tile: grey caption above a white value.
+    function drawTile(dc, x, y, label, value) as Void {
+        dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y, Graphics.FONT_XTINY, label, CTR);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y + dc.getHeight() * 0.05, Graphics.FONT_TINY, value, CTR);
+    }
+
+    // Format a numeric (Number or Float) to one decimal place.
+    function fmt1(v) as String {
+        return v.toFloat().format("%.1f");
     }
 
     // Ring: dim full track + a band-coloured fill of `frac` of a 300° sweep from the top, clockwise

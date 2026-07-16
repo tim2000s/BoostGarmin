@@ -140,13 +140,20 @@ class BgService extends System.ServiceDelegate {
         var obj = data as Object?;
         if (code == 200 && obj != null && obj instanceof Array && (obj as Array).size() > 0) {
             var latest = (obj as Array)[0] as Dictionary;   // newest first
+            // The [0] element also carries the dosing tier (iob/cob/tbr) and — with the extended
+            // AAPS Garmin payload — loop status + last-loop time. All emitted even in brief_mode.
             var out = {
-                "bg"    => numOrNull(latest, "sgv"),
-                "dir"   => (latest.hasKey("direction") ? latest["direction"] : null),
-                "delta" => numOrNull(latest, "delta"),
-                "sgvMs" => numOrNull(latest, "date"),
-                "ok"    => true,
-                "code"  => code
+                "bg"     => numOrNull(latest, "sgv"),
+                "dir"    => (latest.hasKey("direction") ? latest["direction"] : null),
+                "delta"  => numOrNull(latest, "delta"),
+                "sgvMs"  => numOrNull(latest, "date"),
+                "iob"    => numOrNull(latest, "iob"),
+                "cob"    => numOrNull(latest, "cob"),
+                "tbr"    => numOrNull(latest, "tbr"),
+                "loop"   => (latest.hasKey("loop") ? latest["loop"] : null),
+                "loopMs" => numOrNull(latest, "loopMs"),
+                "ok"     => true,
+                "code"   => code
             };
             Background.exit(out);
         } else {

@@ -16,6 +16,11 @@ module BoostData {
     const K_SGVMS = "sgvMs";     // sensor timestamp of the reading (ms)
     const K_UPDMS = "updMs";     // when WE last got a good pull (for staleness)
     const K_OK    = "ok";
+    const K_IOB   = "iob";       // bolus+basal IOB (U)
+    const K_COB   = "cob";       // carbs on board (g)
+    const K_TBR   = "tbr";       // temp basal rate (%)
+    const K_LOOP  = "loop";      // loop status string (CLOSED/OPEN/LGS/SUSPEND/…)
+    const K_LOOPMS= "loopMs";    // epoch-ms of the last APS run (loop freshness)
 
     // ── Settings (from resources/settings/settings.xml) ──
     function host() as String {
@@ -36,6 +41,11 @@ module BoostData {
             Application.Storage.setValue(K_DIR,   data["dir"]);
             Application.Storage.setValue(K_DELTA, data["delta"]);
             Application.Storage.setValue(K_SGVMS, data["sgvMs"]);
+            Application.Storage.setValue(K_IOB,   data["iob"]);
+            Application.Storage.setValue(K_COB,   data["cob"]);
+            Application.Storage.setValue(K_TBR,   data["tbr"]);
+            Application.Storage.setValue(K_LOOP,  data["loop"]);
+            Application.Storage.setValue(K_LOOPMS,data["loopMs"]);
             Application.Storage.setValue(K_UPDMS, System.getTimer());
         }
         // On failure we keep the last-good values and just let the age grow (honest staleness).
@@ -44,6 +54,27 @@ module BoostData {
     function bg()    { return Application.Storage.getValue(K_BG); }
     function dir()   { return Application.Storage.getValue(K_DIR); }
     function delta() { return Application.Storage.getValue(K_DELTA); }
+    function iob()   { return Application.Storage.getValue(K_IOB); }
+    function cob()   { return Application.Storage.getValue(K_COB); }
+    function tbr()   { return Application.Storage.getValue(K_TBR); }
+    function loop()  { return Application.Storage.getValue(K_LOOP); }
+
+    // Minutes since the last APS run (loop freshness), or -1 if unknown.
+    function loopAgeMin() as Number {
+        var s = Application.Storage.getValue(K_LOOPMS);
+        if (s == null) { return -1; }
+        var nowMs = Time.now().value().toLong() * 1000;
+        return ((nowMs - s) / 60000).toNumber();
+    }
+
+    // Loop pill colour: green if it ran in the last ~7 min, amber if older, grey if unknown.
+    function loopColor() as Number {
+        var a = loopAgeMin();
+        if (a < 0)   { return 0x808080; }
+        if (a <= 7)  { return 0x41C97B; }
+        if (a <= 20) { return 0xFFC233; }
+        return 0xFF5252;
+    }
 
     // Minutes since the reading's sensor timestamp (staleness the face shows).
     function ageMin() as Number {
