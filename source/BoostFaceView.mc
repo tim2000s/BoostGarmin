@@ -55,68 +55,53 @@ class BoostFaceView extends WatchUi.WatchFace {
             return;
         }
 
-        // ── Perimeter BG ring (300° sweep, band-coloured fill over a dim track) ──
-        var r = (w / 2) - 12;
+        var white = stale ? 0x808080 : Graphics.COLOR_WHITE;
+
+        // ── Perimeter BG ring (band-coloured) ──
+        var r = (w / 2) - 8;
         drawRing(dc, cx, cy, r, BoostData.bgFrac(bg), stale ? 0x5A5A5A : band);
 
-        // ── Time + date (top) ──
+        // ── Row 1: time (top) ──
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.155, Graphics.FONT_NUMBER_MEDIUM, timeStr, CTR);
-        dc.setColor(0x8A8A8A, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.285, Graphics.FONT_XTINY, dateString(), CTR);
+        dc.drawText(cx, h * 0.075, Graphics.FONT_NUMBER_MEDIUM, timeStr, CTR);
 
-        // ── BG hero (centre) + trend arrow + delta ──
-        // Value sits slightly left of centre so the arrow has room to its right.
-        drawBgValue(dc, cx - w * 0.10, cy - h * 0.015, bg, bgCol, Graphics.FONT_NUMBER_HOT);
-        drawTrendArrows(dc, (cx + w * 0.235).toNumber(), cy.toNumber(), (h * 0.055).toNumber(),
-                        BoostData.dir(), bgCol);
+        // ── Row 2: IOB (blue) · COB (orange) · TBR (white) ──
+        var r2  = (h * 0.31).toNumber();
+        var iob = BoostData.iob();
+        var cob = BoostData.cob();
+        var tbr = BoostData.tbr();
+        dc.setColor(0x4FC3F7, Graphics.COLOR_TRANSPARENT);
+        dc.drawText((cx - w * 0.25).toNumber(), r2, Graphics.FONT_SMALL, (iob == null ? "--" : fmt1(iob) + "U"), VC);
+        dc.setColor(0xFFB300, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, r2, Graphics.FONT_SMALL, (cob == null ? "--" : cob.format("%d") + "g"), VC);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText((cx + w * 0.25).toNumber(), r2, Graphics.FONT_SMALL, (tbr == null ? "--" : tbr.format("%d") + "%"), VC);
 
+        // ── Row 3 (HERO): delta │ BG │ trend │ age │ loop ring ──
+        drawBgValue(dc, cx, cy, bg, white, Graphics.FONT_NUMBER_HOT);
         var d = BoostData.delta();
         if (d != null) {
-            var ds = (d >= 0 ? "+" : "") + d.format("%d");
-            dc.setColor(0xB0B0B0, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy + h * 0.115, Graphics.FONT_SMALL, ds, CTR);
+            dc.setColor(0x9E9E9E, Graphics.COLOR_TRANSPARENT);
+            dc.drawText((cx - w * 0.30).toNumber(), cy, Graphics.FONT_SMALL, (d >= 0 ? "+" : "") + d.format("%d"), VC);
         }
-
-        // ── Dosing / loop row: IOB (left) · loop pill (centre) · COB (right) ──
-        var rowY = (cy + h * 0.185).toNumber();
-        var iob = BoostData.iob();
-        drawTile(dc, (cx - w * 0.22).toNumber(), rowY, "IOB", (iob == null ? "--" : fmt1(iob) + "U"));
-        var cob = BoostData.cob();
-        drawTile(dc, (cx + w * 0.22).toNumber(), rowY, "COB", (cob == null ? "--" : cob.format("%d") + "g"));
-        var lp = BoostData.loop();
-        if (lp != null) {
-            dc.setColor(BoostData.loopColor(), Graphics.COLOR_TRANSPARENT);
-            dc.fillCircle((cx - w * 0.085).toNumber(), (rowY + h * 0.035).toNumber(), 5);
-            dc.setColor(0xCFCFCF, Graphics.COLOR_TRANSPARENT);
-            dc.drawText((cx + w * 0.02).toNumber(), (rowY + h * 0.035).toNumber(),
-                        Graphics.FONT_XTINY, lp, VC);
-        }
-
-        // ── HR (left) ──
-        var hx = (cx - w * 0.255).toNumber();
-        var hy = (cy + h * 0.015).toNumber();
-        var hr = currentHr();
-        drawHeart(dc, hx, hy, (h * 0.028).toNumber(), 0xFF5252);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(hx, hy + h * 0.075, Graphics.FONT_TINY, (hr == null ? "--" : hr.toString()), CTR);
-
-        // ── Steps (right) ──
-        var sx = (cx + w * 0.255).toNumber();
-        var sy = hy;
-        dc.setColor(0x7EC8FF, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(sx, sy - h * 0.045, Graphics.FONT_XTINY, "STEPS", CTR);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(sx, sy + h * 0.075, Graphics.FONT_TINY, stepStr(), CTR);
-
-        // ── Staleness stamp (bottom, above battery) — never hide old data ──
+        drawTrendArrows(dc, (cx + w * 0.235).toNumber(), cy, (h * 0.04).toNumber(), BoostData.dir(), white);
         if (age >= 0) {
-            dc.setColor(stale ? 0xFF9F45 : 0x707070, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy + h * 0.245, Graphics.FONT_XTINY, age.toString() + "m", CTR);
+            dc.setColor(stale ? 0xFF9F45 : 0x9E9E9E, Graphics.COLOR_TRANSPARENT);
+            dc.drawText((cx + w * 0.33).toNumber(), cy, Graphics.FONT_XTINY, age.toString() + "m", VC);
         }
+        drawLoopRing(dc, (cx + w * 0.42).toNumber(), cy, (h * 0.035).toNumber(), BoostData.loop(), BoostData.loopColor());
 
-        // ── Battery (bottom) ──
-        drawBattery(dc, cx, (h * 0.85).toNumber(), (w * 0.10).toNumber(), System.getSystemStats().battery);
+        // ── Row 4: HR (left) · battery (right) ──
+        var r4 = (h * 0.665).toNumber();
+        var hr = currentHr();
+        drawHeart(dc, (cx - w * 0.26).toNumber(), r4, (h * 0.021).toNumber(), 0xFF5252);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText((cx - w * 0.185).toNumber(), r4, Graphics.FONT_SMALL, (hr == null ? "--" : hr.toString()), VC);
+        drawBatteryH(dc, (cx + w * 0.12).toNumber(), r4, (w * 0.11).toNumber(), System.getSystemStats().battery);
+
+        // ── Row 5: date (bottom) ──
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, h * 0.80, Graphics.FONT_MEDIUM, dateString(), CTR);
     }
 
     // ── BG value ──
@@ -249,6 +234,35 @@ class BoostFaceView extends WatchUi.WatchFace {
         dc.fillRectangle(x0 + 2, y0 + 2, fillW, bh - 4);
         dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, cy + bh, Graphics.FONT_XTINY, pct.format("%d") + "%", CTR);
+    }
+
+    // Loop status as a ring (green O when fresh, amber/red as it ages, grey if unknown).
+    function drawLoopRing(dc, x, y, radius, loopStr, color) as Void {
+        dc.setColor((loopStr == null) ? 0x606060 : color, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(5);
+        dc.drawCircle(x, y, radius);
+        dc.setPenWidth(1);
+    }
+
+    // Horizontal battery: icon then "NN%" to its right (matches the target row).
+    function drawBatteryH(dc, x, y, wpx, pct) as Void {
+        if (pct == null) { pct = 0.0; }
+        var bw = wpx;
+        var bh = (wpx * 0.5).toNumber();
+        var x0 = x - bw / 2;
+        var y0 = y - bh / 2;
+        var col = (pct > 30) ? 0x41C97B : ((pct > 15) ? 0xFFC233 : 0xFF5252);
+        dc.setColor(0x888888, Graphics.COLOR_TRANSPARENT);
+        dc.drawRoundedRectangle(x0, y0, bw, bh, 2);
+        dc.fillRoundedRectangle(x0 + bw + 1, y0 + bh / 4, 2, bh / 2, 1);   // nub
+        var fillW = ((bw - 4) * (pct / 100.0)).toNumber();
+        if (fillW < 1 && pct > 0) { fillW = 1; }
+        dc.setColor(col, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x0 + 2, y0 + 2, fillW, bh - 4);
+        // % text sits just to the RIGHT of the icon (left-justified), smaller font — no overlap.
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText((x + bw / 2 + 8).toNumber(), y, Graphics.FONT_XTINY, pct.format("%d") + "%",
+                    Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     // ── On-device data ──
