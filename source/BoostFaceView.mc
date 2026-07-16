@@ -55,53 +55,50 @@ class BoostFaceView extends WatchUi.WatchFace {
             return;
         }
 
-        var white = stale ? 0x808080 : Graphics.COLOR_WHITE;
+        // Faithful port of the Boost BG-Ring WFF face
+        // (BoostWFFVariants/watchface/src/bgring/res/raw/watchface.xml, 450x450). Every y/x below is a
+        // WFF box-centre ÷ 450, so proportions match the Wear face exactly.
 
-        // ── Perimeter BG ring (band-coloured) ──
-        var r = (w / 2) - 8;
-        drawRing(dc, cx, cy, r, BoostData.bgFrac(bg), stale ? 0x5A5A5A : band);
+        // ── BG ring: WFF Arc -150°..+150° (60° gap at the bottom), r = 205/450, thickness 14. ──
+        drawRing(dc, cx, cy, (w * 0.456).toNumber(), BoostData.bgFrac(bg), stale ? 0x5A5A5A : band);
 
-        // ── Row 1: time (top) ──
+        // ── Top slot: date (grey-blue) ──  WFF slot4 @ y40, size24 #b0bec5
+        dc.setColor(0xB0BEC5, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, (h * 0.140).toNumber(), Graphics.FONT_SMALL, dateString(), VC);
+
+        // ── Time ──  WFF @ y92, size48 white
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.075, Graphics.FONT_NUMBER_MEDIUM, timeStr, CTR);
+        dc.drawText(cx, (h * 0.271).toNumber(), Graphics.FONT_NUMBER_MEDIUM, timeStr, VC);
 
-        // ── Row 2: IOB (blue) · COB (orange) · TBR (white) ──
-        var r2  = (h * 0.31).toNumber();
-        var iob = BoostData.iob();
-        var cob = BoostData.cob();
-        var tbr = BoostData.tbr();
-        dc.setColor(0x4FC3F7, Graphics.COLOR_TRANSPARENT);
-        dc.drawText((cx - w * 0.25).toNumber(), r2, Graphics.FONT_SMALL, (iob == null ? "--" : fmt1(iob) + "U"), VC);
-        dc.setColor(0xFFB300, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, r2, Graphics.FONT_SMALL, (cob == null ? "--" : cob.format("%d") + "g"), VC);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText((cx + w * 0.25).toNumber(), r2, Graphics.FONT_SMALL, (tbr == null ? "--" : tbr.format("%d") + "%"), VC);
+        // ── BG hero: TIR-band coloured (the WFF number takes the band colour) ──  WFF @ y150, size80
+        drawBgValue(dc, cx, (h * 0.424).toNumber(), bg, bgCol, Graphics.FONT_NUMBER_HOT);
 
-        // ── Row 3 (HERO): delta │ BG │ trend │ age │ loop ring ──
-        drawBgValue(dc, cx, cy, bg, white, Graphics.FONT_NUMBER_HOT);
+        // ── delta + age + trend arrow (grey-blue) ──  WFF @ y234, size26 #b0bec5
+        var dy = (h * 0.556).toNumber();
+        drawTrendArrows(dc, (cx - w * 0.17).toNumber(), dy, (h * 0.028).toNumber(), BoostData.dir(), 0xB0BEC5);
         var d = BoostData.delta();
-        if (d != null) {
-            dc.setColor(0x9E9E9E, Graphics.COLOR_TRANSPARENT);
-            dc.drawText((cx - w * 0.30).toNumber(), cy, Graphics.FONT_SMALL, (d >= 0 ? "+" : "") + d.format("%d"), VC);
-        }
-        drawTrendArrows(dc, (cx + w * 0.235).toNumber(), cy, (h * 0.04).toNumber(), BoostData.dir(), white);
-        if (age >= 0) {
-            dc.setColor(stale ? 0xFF9F45 : 0x9E9E9E, Graphics.COLOR_TRANSPARENT);
-            dc.drawText((cx + w * 0.33).toNumber(), cy, Graphics.FONT_XTINY, age.toString() + "m", VC);
-        }
-        drawLoopRing(dc, (cx + w * 0.42).toNumber(), cy, (h * 0.035).toNumber(), BoostData.loop(), BoostData.loopColor());
+        var sub = "";
+        if (d != null) { sub = (d >= 0 ? "+" : "") + d.format("%d"); }
+        if (age >= 0)  { sub += (sub.length() > 0 ? "     " : "") + age.toString() + "m"; }
+        dc.setColor(0xB0BEC5, Graphics.COLOR_TRANSPARENT);
+        dc.drawText((cx + w * 0.05).toNumber(), dy, Graphics.FONT_SMALL, sub, VC);
 
-        // ── Row 4: HR (left) · battery (right) ──
-        var r4 = (h * 0.665).toNumber();
-        var hr = currentHr();
-        drawHeart(dc, (cx - w * 0.26).toNumber(), r4, (h * 0.021).toNumber(), 0xFF5252);
+        // ── IOB (left) + ISF (right): grey label over white value ──  WFF x40/x240, y286 label / y308 value
+        var lx  = (w * 0.278).toNumber();
+        var rx  = (w * 0.722).toNumber();
+        var iob = BoostData.iob();
+        var isf = BoostData.isf();
+        dc.setColor(0x90A4AE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(lx, (h * 0.660).toNumber(), Graphics.FONT_XTINY, "IOB", VC);
+        dc.drawText(rx, (h * 0.660).toNumber(), Graphics.FONT_XTINY, "ISF", VC);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText((cx - w * 0.185).toNumber(), r4, Graphics.FONT_SMALL, (hr == null ? "--" : hr.toString()), VC);
-        drawBatteryH(dc, (cx + w * 0.12).toNumber(), r4, (w * 0.11).toNumber(), System.getSystemStats().battery);
+        dc.drawText(lx, (h * 0.740).toNumber(), Graphics.FONT_MEDIUM, (iob == null ? "--" : fmt1(iob) + "U"), VC);
+        dc.drawText(rx, (h * 0.740).toNumber(), Graphics.FONT_MEDIUM, (isf == null ? "--" : fmt1(isf)), VC);
 
-        // ── Row 5: date (bottom) ──
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.80, Graphics.FONT_MEDIUM, dateString(), CTR);
+        // ── Status / loop line (bottom, teal) ──  WFF slot3 @ y372, size24 #80cbc4
+        var lp = BoostData.loop();
+        dc.setColor(0x80CBC4, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, (h * 0.876).toNumber(), Graphics.FONT_SMALL, (lp == null) ? "--" : lp, VC);
     }
 
     // ── BG value ──
@@ -127,10 +124,13 @@ class BoostFaceView extends WatchUi.WatchFace {
     // Ring: dim full track + a band-coloured fill of `frac` of a 300° sweep from the top, clockwise
     // (60° gap at the bottom, mirroring the WFF -150°..+150° span). CIQ angles: 0°=3 o'clock, CCW-positive.
     function drawRing(dc, cx, cy, r, frac, color) as Void {
-        var startDeg = 90;              // 12 o'clock
+        // Match the Wear "bgring" WFF face: track spans WFF -150°..+150° (60° gap at the bottom).
+        // WFF angle (top=0, clockwise+) -150° → CIQ angle (3-o'clock=0, CCW+) 240° = bottom-left.
+        // Fill grows clockwise from there (up the left side, over the top, down to bottom-right).
+        var startDeg = 240;
         var maxSweep = 300.0;
-        dc.setPenWidth(10);
-        dc.setColor(0x262626, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(14);                       // WFF Stroke thickness=14
+        dc.setColor(0x333333, Graphics.COLOR_TRANSPARENT);   // dim track (WFF #33ffffff)
         dc.drawArc(cx, cy, r, Graphics.ARC_CLOCKWISE, startDeg, startDeg - maxSweep + 360);
         if (frac > 0.0) {
             var end = startDeg - (frac * maxSweep);

@@ -21,6 +21,7 @@ module BoostData {
     const K_TBR   = "tbr";       // temp basal rate (%)
     const K_LOOP  = "loop";      // loop status string (CLOSED/OPEN/LGS/SUSPEND/…)
     const K_LOOPMS= "loopMs";    // epoch-ms of the last APS run (loop freshness)
+    const K_ISF   = "isf";       // DynISF / variable sensitivity (mg/dL/U)
 
     // ── Settings (from resources/settings/settings.xml) ──
     function host() as String {
@@ -46,6 +47,7 @@ module BoostData {
             Application.Storage.setValue(K_TBR,   data["tbr"]);
             Application.Storage.setValue(K_LOOP,  data["loop"]);
             Application.Storage.setValue(K_LOOPMS,data["loopMs"]);
+            Application.Storage.setValue(K_ISF,   data["isf"]);
             Application.Storage.setValue(K_UPDMS, System.getTimer());
         }
         // On failure we keep the last-good values and just let the age grow (honest staleness).
@@ -58,6 +60,7 @@ module BoostData {
     function cob()   { return Application.Storage.getValue(K_COB); }
     function tbr()   { return Application.Storage.getValue(K_TBR); }
     function loop()  { return Application.Storage.getValue(K_LOOP); }
+    function isf()   { return Application.Storage.getValue(K_ISF); }
 
     // Minutes since the last APS run (loop freshness), or -1 if unknown.
     function loopAgeMin() as Number {
