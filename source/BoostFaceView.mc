@@ -55,59 +55,54 @@ class BoostFaceView extends WatchUi.WatchFace {
             return;
         }
 
-        // Faithful port of the Boost BG-Ring WFF face
-        // (BoostWFFVariants/watchface/src/bgring/res/raw/watchface.xml, 450x450). Every y/x below is a
-        // WFF box-centre ÷ 450, so proportions match the Wear face exactly.
+        // Faithful port of the Boost BG-Ring WFF face (bgring/watchface.xml, 450x450). Positions are
+        // the WFF box-CENTRES and text uses VECTOR fonts at the WFF point-sizes — both scaled by
+        // R = screen/450 — so the Garmin proportionally matches the Wear face.
+        var R = h / 450.0;
 
-        // ── BG ring: WFF Arc -150°..+150° (60° gap at the bottom), r = 205/450, thickness 14. ──
-        drawRing(dc, cx, cy, (w * 0.456).toNumber(), BoostData.bgFrac(bg), stale ? 0x5A5A5A : band);
+        // ── BG ring (WFF Arc -150°..+150°, r=205, thickness 14) ──
+        drawRing(dc, cx, cy, (205 * R).toNumber(), BoostData.bgFrac(bg), stale ? 0x5A5A5A : band);
 
-        // NB: the WFF grid (450px) packs time+BG almost touching because its fonts fit their boxes
-        // exactly; Garmin's NUMBER_* fonts are taller, so the stack is spread wider than the raw WFF
-        // y's to avoid overlap while keeping the same order/proportions.
-
-        // ── Top slot: date (grey-blue) ──
+        // ── date (top slot @ y63, size 24, grey-blue) ──
         dc.setColor(0xB0BEC5, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.115).toNumber(), Graphics.FONT_TINY, dateString(), VC);
+        dc.drawText(cx, (63 * R).toNumber(), vf(24, false, R, Graphics.FONT_SMALL), dateString(), VC);
 
-        // ── Time ──
+        // ── time (@ y122, size 48, white) ──
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.250).toNumber(), Graphics.FONT_NUMBER_MILD, timeStr, VC);
+        dc.drawText(cx, (122 * R).toNumber(), vf(48, false, R, Graphics.FONT_NUMBER_MEDIUM), timeStr, VC);
 
-        // ── BG hero: TIR-band coloured ──
-        drawBgValue(dc, cx, (h * 0.455).toNumber(), BoostData.bgText(), bgCol, Graphics.FONT_NUMBER_MEDIUM);
+        // ── BG (@ y191, size 80 bold, TIR-band) ──
+        dc.setColor(bgCol, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, (191 * R).toNumber(), vf(80, true, R, Graphics.FONT_NUMBER_HOT), BoostData.bgText(), VC);
 
-        // ── delta + age + trend arrow (grey-blue) ──
-        var dy = (h * 0.610).toNumber();
-        drawTrendArrows(dc, (cx - w * 0.17).toNumber(), dy, (h * 0.028).toNumber(), BoostData.dir(), 0xB0BEC5);
+        // ── delta + age + trend arrow (@ y250, size 26, grey-blue) ──
+        var dy = (250 * R).toNumber();
+        drawTrendArrows(dc, (cx - w * 0.17).toNumber(), dy, (h * 0.026).toNumber(), BoostData.dir(), 0xB0BEC5);
         var sub = BoostData.deltaText();
         if (age >= 0)  { sub += (sub.length() > 0 ? "     " : "") + age.toString() + "m"; }
         dc.setColor(0xB0BEC5, Graphics.COLOR_TRANSPARENT);
-        dc.drawText((cx + w * 0.05).toNumber(), dy, Graphics.FONT_TINY, sub, VC);
+        dc.drawText((cx + w * 0.05).toNumber(), dy, vf(26, false, R, Graphics.FONT_SMALL), sub, VC);
 
-        // ── IOB (left) + ISF (right): grey label over white value ──  WFF x40/x240, y286 label / y308 value
-        var lx  = (w * 0.278).toNumber();
-        var rx  = (w * 0.722).toNumber();
+        // ── IOB (@ x125) + ISF (@ x325): label y286 size 18, value y333 size 32 ──
+        var lx  = (125 * R).toNumber();
+        var rx  = (325 * R).toNumber();
         var iob = BoostData.iob();
         var isf = BoostData.isf();
         dc.setColor(0x90A4AE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(lx, (h * 0.700).toNumber(), Graphics.FONT_XTINY, "IOB", VC);
-        dc.drawText(rx, (h * 0.700).toNumber(), Graphics.FONT_XTINY, "ISF", VC);
+        dc.drawText(lx, (297 * R).toNumber(), vf(18, false, R, Graphics.FONT_XTINY), "IOB", VC);
+        dc.drawText(rx, (297 * R).toNumber(), vf(18, false, R, Graphics.FONT_XTINY), "ISF", VC);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(lx, (h * 0.775).toNumber(), Graphics.FONT_SMALL, (iob == null ? "--" : fmt1(iob) + "U"), VC);
-        dc.drawText(rx, (h * 0.775).toNumber(), Graphics.FONT_SMALL, (isf == null ? "--" : fmt1(isf)), VC);
+        dc.drawText(lx, (333 * R).toNumber(), vf(32, false, R, Graphics.FONT_MEDIUM), (iob == null ? "--" : fmt1(iob) + "U"), VC);
+        dc.drawText(rx, (333 * R).toNumber(), vf(32, false, R, Graphics.FONT_MEDIUM), (isf == null ? "--" : fmt1(isf)), VC);
 
-        // ── Status line (bottom, teal): compound details like the Wear bgring bottom slot
-        //    (COB · IOB · TBR), not the bare loop mode. ──
-        var cobV = BoostData.cob();
+        // ── status (bottom @ y394, size 24, teal): IOB · TBR (Boost doesn't use COB) ──
         var tbrV = BoostData.tbr();
         var st = "";
-        if (cobV != null) { st += cobV.format("%d") + "g"; }
-        if (iob != null)  { st += (st.length() > 0 ? "  " : "") + fmt1(iob) + "U"; }
-        if (tbrV != null) { st += (st.length() > 0 ? "  " : "") + tbrV.format("%d") + "%"; }
+        if (iob != null)  { st += fmt1(iob) + "U"; }
+        if (tbrV != null) { st += (st.length() > 0 ? "   " : "") + tbrV.format("%d") + "%"; }
         if (st.equals("")) { st = "--"; }
         dc.setColor(0x80CBC4, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.900).toNumber(), Graphics.FONT_TINY, st, VC);
+        dc.drawText(cx, (394 * R).toNumber(), vf(24, false, R, Graphics.FONT_SMALL), st, VC);
     }
 
     // ── BG value (s is pre-formatted for the user's units) ──
@@ -127,6 +122,20 @@ class BoostFaceView extends WatchUi.WatchFace {
     // Format a numeric (Number or Float) to one decimal place.
     function fmt1(v) as String {
         return v.toFloat().format("%.1f");
+    }
+
+    // Vector font at a WFF point-size `pt` scaled by R (= screen/450), so sizes match the Wear face
+    // proportionally. `bold` picks a bold face. Falls back to `fallback` (a named font) if the device
+    // has no matching vector font.
+    function vf(pt, bold, R, fallback) {
+        if (Graphics has :getVectorFont) {
+            var faces = bold
+                ? ["RobotoCondensedBold", "RobotoBold", "NanumGothicBold"]
+                : ["RobotoCondensedRegular", "RobotoRegular", "NanumGothic"];
+            var f = Graphics.getVectorFont({ :face => faces, :size => (pt * R).toNumber() });
+            if (f != null) { return f; }
+        }
+        return fallback;
     }
 
     // Ring: dim full track + a band-coloured fill of `frac` of a 300° sweep from the top, clockwise
