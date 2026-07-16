@@ -68,14 +68,14 @@ class BoostFaceView extends WatchUi.WatchFace {
 
         // ── Top slot: date (grey-blue) ──
         dc.setColor(0xB0BEC5, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.115).toNumber(), Graphics.FONT_SMALL, dateString(), VC);
+        dc.drawText(cx, (h * 0.115).toNumber(), Graphics.FONT_TINY, dateString(), VC);
 
         // ── Time ──
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.250).toNumber(), Graphics.FONT_NUMBER_MEDIUM, timeStr, VC);
+        dc.drawText(cx, (h * 0.250).toNumber(), Graphics.FONT_NUMBER_MILD, timeStr, VC);
 
         // ── BG hero: TIR-band coloured ──
-        drawBgValue(dc, cx, (h * 0.455).toNumber(), BoostData.bgText(), bgCol, Graphics.FONT_NUMBER_HOT);
+        drawBgValue(dc, cx, (h * 0.455).toNumber(), BoostData.bgText(), bgCol, Graphics.FONT_NUMBER_MEDIUM);
 
         // ── delta + age + trend arrow (grey-blue) ──
         var dy = (h * 0.610).toNumber();
@@ -83,7 +83,7 @@ class BoostFaceView extends WatchUi.WatchFace {
         var sub = BoostData.deltaText();
         if (age >= 0)  { sub += (sub.length() > 0 ? "     " : "") + age.toString() + "m"; }
         dc.setColor(0xB0BEC5, Graphics.COLOR_TRANSPARENT);
-        dc.drawText((cx + w * 0.05).toNumber(), dy, Graphics.FONT_SMALL, sub, VC);
+        dc.drawText((cx + w * 0.05).toNumber(), dy, Graphics.FONT_TINY, sub, VC);
 
         // ── IOB (left) + ISF (right): grey label over white value ──  WFF x40/x240, y286 label / y308 value
         var lx  = (w * 0.278).toNumber();
@@ -94,13 +94,13 @@ class BoostFaceView extends WatchUi.WatchFace {
         dc.drawText(lx, (h * 0.700).toNumber(), Graphics.FONT_XTINY, "IOB", VC);
         dc.drawText(rx, (h * 0.700).toNumber(), Graphics.FONT_XTINY, "ISF", VC);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(lx, (h * 0.775).toNumber(), Graphics.FONT_MEDIUM, (iob == null ? "--" : fmt1(iob) + "U"), VC);
-        dc.drawText(rx, (h * 0.775).toNumber(), Graphics.FONT_MEDIUM, (isf == null ? "--" : fmt1(isf)), VC);
+        dc.drawText(lx, (h * 0.775).toNumber(), Graphics.FONT_SMALL, (iob == null ? "--" : fmt1(iob) + "U"), VC);
+        dc.drawText(rx, (h * 0.775).toNumber(), Graphics.FONT_SMALL, (isf == null ? "--" : fmt1(isf)), VC);
 
         // ── Status / loop line (bottom, teal) ──  WFF slot3 @ y372, size24 #80cbc4
         var lp = BoostData.loop();
         dc.setColor(0x80CBC4, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, (h * 0.900).toNumber(), Graphics.FONT_SMALL, (lp == null) ? "--" : lp, VC);
+        dc.drawText(cx, (h * 0.900).toNumber(), Graphics.FONT_TINY, (lp == null) ? "--" : lp, VC);
     }
 
     // ── BG value (s is pre-formatted for the user's units) ──
@@ -141,66 +141,47 @@ class BoostFaceView extends WatchUi.WatchFace {
         }
     }
 
-    // CGM trend as rotated filled arrow(s): Double* draws two stacked arrows, single one.
-    // Visual angle: up = +90°, Flat = 0° (points right), down = -90°.
+    // CGM trend as a clean line arrow. `ang` is SCREEN degrees (y down): the arrow points along
+    // (cos,sin) — Flat=0 (right), up=-90, down=+90, 45° variants between. Double = two stacked.
     function drawTrendArrows(dc, x, y, size, dir, color) as Void {
-        if (dir == null) {
-            dc.setColor(0x808080, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(x, y, Graphics.FONT_SMALL, "?", VC);
-            return;
-        }
         var ang;
-        var count = 1;
-        if      (dir.equals("DoubleUp"))      { ang =  90; count = 2; }
-        else if (dir.equals("SingleUp"))      { ang =  90; }
-        else if (dir.equals("FortyFiveUp"))   { ang =  45; }
-        else if (dir.equals("Flat"))          { ang =   0; }
-        else if (dir.equals("FortyFiveDown")) { ang = -45; }
-        else if (dir.equals("SingleDown"))    { ang = -90; }
-        else if (dir.equals("DoubleDown"))    { ang = -90; count = 2; }
+        var dbl = false;
+        if      (dir != null && dir.equals("DoubleUp"))      { ang = -90; dbl = true; }
+        else if (dir != null && dir.equals("SingleUp"))      { ang = -90; }
+        else if (dir != null && dir.equals("FortyFiveUp"))   { ang = -45; }
+        else if (dir != null && dir.equals("Flat"))          { ang =   0; }
+        else if (dir != null && dir.equals("FortyFiveDown")) { ang =  45; }
+        else if (dir != null && dir.equals("SingleDown"))    { ang =  90; }
+        else if (dir != null && dir.equals("DoubleDown"))    { ang =  90; dbl = true; }
         else {
-            dc.setColor(0x808080, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(x, y, Graphics.FONT_SMALL, "-", VC);
+            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(x, y, Graphics.FONT_TINY, "-", VC);
             return;
         }
-        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        if (count == 2) {
-            // stack the pair along the arrow's perpendicular so both point the same way
-            var ox = (Math.cos((ang) * Math.PI / 180.0) * size * 0.55);
-            var oy = (Math.sin((ang) * Math.PI / 180.0) * size * 0.55);
-            drawArrow(dc, x - ox, y + oy, size, ang, color);
-            drawArrow(dc, x + ox, y - oy, size, ang, color);
+        if (dbl) {
+            drawArrow(dc, x, y - size * 0.45, size, ang, color);
+            drawArrow(dc, x, y + size * 0.45, size, ang, color);
         } else {
             drawArrow(dc, x, y, size, ang, color);
         }
     }
 
-    // One filled arrow centred at (x,y), pointing at visual angle `ang` (deg; up=+90). Screen y is
-    // down, so we negate the rotated y to make +angle point up.
+    // One arrow centred at (x,y): a shaft (tail→tip) plus two barb lines at the tip.
     function drawArrow(dc, x, y, size, ang, color) as Void {
-        var a = ang * Math.PI / 180.0;
+        var a  = ang * Math.PI / 180.0;
         var ca = Math.cos(a);
         var sa = Math.sin(a);
-        // arrow in local frame (pointing +x): tip, two barbs, shaft rectangle back.
-        var pts = [
-            [ size,        0.0        ],   // tip
-            [ size * 0.15, -size * 0.7 ],   // upper barb
-            [ size * 0.15, -size * 0.28],
-            [-size,        -size * 0.28],   // shaft back-upper
-            [-size,         size * 0.28],   // shaft back-lower
-            [ size * 0.15,  size * 0.28],
-            [ size * 0.15,  size * 0.7 ]    // lower barb
-        ];
-        var scr = new [pts.size()];
-        for (var i = 0; i < pts.size(); i++) {
-            var px = pts[i][0];
-            var py = pts[i][1];
-            var rx = px * ca - py * sa;
-            var ry = px * sa + py * ca;
-            scr[i] = [ x + rx, y - ry ];   // negate ry: math-up -> screen-up
-        }
+        var tx = x + size * ca;   var ty = y + size * sa;   // tip
+        var bx = x - size * ca;   var by = y - size * sa;   // tail
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon(scr);
+        dc.setPenWidth(3);
+        dc.drawLine(bx, by, tx, ty);
+        var barb = size * 0.7;
+        var a1 = a + Math.PI - 0.6;   // ~34° off the shaft
+        var a2 = a + Math.PI + 0.6;
+        dc.drawLine(tx, ty, tx + barb * Math.cos(a1), ty + barb * Math.sin(a1));
+        dc.drawLine(tx, ty, tx + barb * Math.cos(a2), ty + barb * Math.sin(a2));
+        dc.setPenWidth(1);
     }
 
     // Simple filled heart (two lobes + a triangle) centred at (x,y).
