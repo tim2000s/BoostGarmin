@@ -38,9 +38,9 @@ people already running AndroidAPS/Boost; it is not a standalone CGM display.
 Not affiliated with Garmin or Dexcom. Boost/AndroidAPS is DIY open-source software; use
 at your own risk.
 
-## Screenshots (TODO — needs the Mac display awake)
-Capture from the simulator, one per resolution family: 454 (venu3), 416 (venu2),
-390 (vivoactive5), plus a MIP (fenix7) to confirm it reads well.
+## Screenshots
+In `store_assets/` — one per resolution family, populated with sample data:
+`venu3_454.png`, `venu2_416.png`, `vivoactive5_390.png`, `fenix7_260.png` (MIP).
 
 ## Pricing
 Free.
