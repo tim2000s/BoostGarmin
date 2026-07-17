@@ -4,3 +4,5 @@ bin/
 *.debug.xml
 developer_key*
 .appid
+boost.iq
+manifest.xml.bak
