@@ -42,6 +42,9 @@ at your own risk.
 In `store_assets/` — one per resolution family, populated with sample data:
 `venu3_454.png`, `venu2_416.png`, `vivoactive5_390.png`, `fenix7_260.png` (MIP).
 
+## Hero image
+`store_assets/hero_1440x720.png` — 1440×720 mobile promo banner (PNG, 220 KB).
+
 ## Pricing
 Free.
 
