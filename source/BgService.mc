@@ -111,7 +111,15 @@ class BgService extends System.ServiceDelegate {
         }
         if (base == null) { return 0; }
         var d = cum - base;
-        return (d < 0) ? cum : d;   // negative = midnight reset
+        // A negative delta means the cumulative counter reset under us. Returning `cum` here was
+        // wrong: it reports the whole day's steps as though they happened inside this window, and
+        // because every window takes this branch at the same moment the phone receives six
+        // identical counts. One Venu 3 sent 1919 in all six on 2026-08-27, which the phone read as
+        // six times the brisk-walk threshold and would have treated as continuous exercise.
+        // The history is meaningless after a reset, so report nothing for this cycle and let the
+        // next wake establish a fresh base.
+        if (d < 0) { return 0; }
+        return clampSteps(d, graceMin);
     }
 
     // Steps over the last `minutes`: cumulative_now − cumulative_at(≈minutes ago). Uses the EARLIEST
@@ -124,7 +132,16 @@ class BgService extends System.ServiceDelegate {
         }
         if (base == null) { return 0; }
         var d = cum - base;
-        return (d < 0) ? cum : d;   // negative = midnight reset
+        if (d < 0) { return 0; }    // counter reset: the history is meaningless, report nothing
+        return clampSteps(d, minutes);
+    }
+
+    // A trailing-window count has a physical ceiling. Nobody sustains more than about 200 steps a
+    // minute, so anything above that is a counter rather than a window and is bounded here as well
+    // as on the phone. Two independent clamps because a watch in the field is not easily updated.
+    function clampSteps(d as Number, minutes as Number) as Number {
+        var ceiling = minutes * 200;
+        return (d > ceiling) ? ceiling : d;
     }
 
     // "<tSec>:<bpm>,<tSec>:<bpm>,..." for valid 1-min samples in the last 5 min.
